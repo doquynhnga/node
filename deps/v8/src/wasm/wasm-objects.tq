@@ -63,6 +63,13 @@ extern class WasmIndirectFunctionTable extends Struct {
   refs: FixedArray;
 }
 
+extern class WasmContinuationObject extends Struct {
+  managed_stack: Foreign;
+  managed_jmpbuf: Foreign;
+  jmpbuf: Foreign;  // Direct access to managed_jmpbuf's underlying pointer.
+  parent: WasmContinuationObject|Undefined;
+}
+
 extern class WasmExceptionTag extends Struct {
   // Note that this index is only useful for debugging purposes and it is not
   // unique across modules. The GC however does not allow objects without at
@@ -156,4 +163,11 @@ extern class WasmArray extends WasmObject {
 
   @if(TAGGED_SIZE_8_BYTES) optional_padding: uint32;
   @ifnot(TAGGED_SIZE_8_BYTES) optional_padding: void;
+}
+
+@export
+class CallRefData extends HeapObject {
+  instance: HeapObject;
+  target: RawPtr;
+  count: uint32;
 }

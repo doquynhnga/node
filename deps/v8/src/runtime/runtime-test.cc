@@ -494,6 +494,10 @@ RUNTIME_FUNCTION(Runtime_OptimizeOsr) {
 
   if (!FLAG_opt) return ReadOnlyRoots(isolate).undefined_value();
 
+  if (!function->shared().allows_lazy_compilation()) {
+    return CrashUnlessFuzzing(isolate);
+  }
+
   if (function->shared().optimization_disabled() &&
       function->shared().disable_optimization_reason() ==
           BailoutReason::kNeverOptimize) {
@@ -983,11 +987,11 @@ RUNTIME_FUNCTION(Runtime_AbortJS) {
   UNREACHABLE();
 }
 
-RUNTIME_FUNCTION(Runtime_AbortCSAAssert) {
+RUNTIME_FUNCTION(Runtime_AbortCSADcheck) {
   HandleScope scope(isolate);
   DCHECK_EQ(1, args.length());
   CONVERT_ARG_HANDLE_CHECKED(String, message, 0);
-  base::OS::PrintError("abort: CSA_ASSERT failed: %s\n",
+  base::OS::PrintError("abort: CSA_DCHECK failed: %s\n",
                        message->ToCString().get());
   isolate->PrintStack(stderr);
   base::OS::Abort();
@@ -1135,8 +1139,8 @@ RUNTIME_FUNCTION(Runtime_RegexpHasBytecode) {
   CONVERT_ARG_CHECKED(JSRegExp, regexp, 0);
   CONVERT_BOOLEAN_ARG_CHECKED(is_latin1, 1);
   bool result;
-  if (regexp.TypeTag() == JSRegExp::IRREGEXP) {
-    result = regexp.Bytecode(is_latin1).IsByteArray();
+  if (regexp.type_tag() == JSRegExp::IRREGEXP) {
+    result = regexp.bytecode(is_latin1).IsByteArray();
   } else {
     result = false;
   }
@@ -1149,8 +1153,8 @@ RUNTIME_FUNCTION(Runtime_RegexpHasNativeCode) {
   CONVERT_ARG_CHECKED(JSRegExp, regexp, 0);
   CONVERT_BOOLEAN_ARG_CHECKED(is_latin1, 1);
   bool result;
-  if (regexp.TypeTag() == JSRegExp::IRREGEXP) {
-    result = regexp.Code(is_latin1).IsCodeT();
+  if (regexp.type_tag() == JSRegExp::IRREGEXP) {
+    result = regexp.code(is_latin1).IsCodeT();
   } else {
     result = false;
   }
@@ -1162,7 +1166,7 @@ RUNTIME_FUNCTION(Runtime_RegexpTypeTag) {
   DCHECK_EQ(1, args.length());
   CONVERT_ARG_CHECKED(JSRegExp, regexp, 0);
   const char* type_str;
-  switch (regexp.TypeTag()) {
+  switch (regexp.type_tag()) {
     case JSRegExp::NOT_COMPILED:
       type_str = "NOT_COMPILED";
       break;
@@ -1417,6 +1421,30 @@ RUNTIME_FUNCTION(Runtime_Is64Bit) {
   DCHECK_EQ(0, args.length());
   return isolate->heap()->ToBoolean(kSystemPointerSize == 8);
 }
+
+#if V8_ENABLE_WEBASSEMBLY
+// TODO(thibaudm): Handle this in Suspender.returnPromiseOnSuspend() when
+// the Suspender object is added.
+RUNTIME_FUNCTION(Runtime_WasmReturnPromiseOnSuspend) {
+  CHECK(FLAG_experimental_wasm_stack_switching);
+  DCHECK_EQ(1, args.length());
+  HandleScope scope(isolate);
+  CONVERT_ARG_HANDLE_CHECKED(JSFunction, function, 0);
+  SharedFunctionInfo sfi = function->shared();
+  // TODO(thibaudm): Throw an error if this is not a wasm function.
+  CHECK(sfi.HasWasmExportedFunctionData());
+  WasmExportedFunctionData data = sfi.wasm_exported_function_data();
+  int index = data.function_index();
+  Handle<WasmInstanceObject> instance(WasmInstanceObject::cast(data.ref()),
+                                      isolate);
+  auto wrapper =
+      isolate->builtins()->code_handle(Builtin::kWasmReturnPromiseOnSuspend);
+  auto result = Handle<WasmExternalFunction>::cast(WasmExportedFunction::New(
+      isolate, instance, index, static_cast<int>(data.sig()->parameter_count()),
+      wrapper));
+  return *result;
+}
+#endif
 
 }  // namespace internal
 }  // namespace v8

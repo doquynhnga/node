@@ -414,7 +414,6 @@
   'debugger/wasm-stepping-with-source-map': [SKIP],
   'debugger/wasm-unnamed-function-names': [SKIP],
   'heap-profiler/collect-garbage': [SKIP],
-  'heap-profiler/console-retaining-path': [SKIP],
   'heap-profiler/sampling-heap-profiler': [SKIP],
   'heap-profiler/take-heap-snapshot-on-pause': [SKIP],
   'json-parse': [SKIP],
@@ -521,5 +520,10 @@
 
   'cpu-profiler/coverage-block': [SKIP],
 }],  # variant == turboprop or variant = turboprop_as_toptier
+
+##############################################################################
+['no_i18n == True', {
+  'runtime/evaluate-without-side-effects-i18n': [SKIP],
+}],  # no_i18n == True
 
 ]

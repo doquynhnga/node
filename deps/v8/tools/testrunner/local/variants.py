@@ -46,6 +46,9 @@ ALL_VARIANT_FLAGS = {
   "stress_instruction_scheduling": [["--turbo-stress-instruction-scheduling"]],
   "top_level_await": [["--harmony-top-level-await"]],
   "wasm_write_protect_code": [["--wasm-write-protect-code-memory"]],
+  # Google3 variants.
+  "google3_icu": [[]],
+  "google3_noicu": [[]],
 }
 
 # Flags that lead to a contradiction with the flags provided by the respective
@@ -54,7 +57,7 @@ ALL_VARIANT_FLAGS = {
 INCOMPATIBLE_FLAGS_PER_VARIANT = {
   "jitless": ["--opt", "--always-opt", "--liftoff", "--track-field-types",
               "--validate-asm", "--sparkplug", "--always-sparkplug",
-              "--regexp-tier-up"],
+              "--regexp-tier-up", "--no-regexp-interpret-all"],
   "nooptimization": ["--always-opt"],
   "slow_path": ["--no-force-slow-path"],
   "stress_concurrent_allocation": ["--single-threaded-gc", "--predictable"],
@@ -92,6 +95,10 @@ INCOMPATIBLE_FLAGS_PER_BUILD_VARIABLE = {
   "predictable": ["--parallel-compile-tasks",
                   "--concurrent-recompilation",
                   "--stress-concurrent-allocation",
+                  "--stress-concurrent-inlining"],
+  "dict_property_const_tracking": [
+                  "--concurrent-inlining",
+                  "--turboprop",
                   "--stress-concurrent-inlining"],
 }
 

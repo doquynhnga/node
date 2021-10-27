@@ -50,6 +50,7 @@ TQ_OBJECT_CONSTRUCTORS_IMPL(WasmFunctionData)
 TQ_OBJECT_CONSTRUCTORS_IMPL(WasmTypeInfo)
 TQ_OBJECT_CONSTRUCTORS_IMPL(WasmStruct)
 TQ_OBJECT_CONSTRUCTORS_IMPL(WasmArray)
+TQ_OBJECT_CONSTRUCTORS_IMPL(WasmContinuationObject)
 
 CAST_ACCESSOR(WasmInstanceObject)
 
@@ -224,6 +225,8 @@ PRIMITIVE_ACCESSORS(WasmInstanceObject, hook_on_function_call_address, Address,
                     kHookOnFunctionCallAddressOffset)
 PRIMITIVE_ACCESSORS(WasmInstanceObject, num_liftoff_function_calls_array,
                     uint32_t*, kNumLiftoffFunctionCallsArrayOffset)
+ACCESSORS(WasmInstanceObject, active_continuation, WasmContinuationObject,
+          kActiveContinuationOffset)
 PRIMITIVE_ACCESSORS(WasmInstanceObject, break_on_entry, uint8_t,
                     kBreakOnEntryOffset)
 
@@ -253,6 +256,8 @@ OPTIONAL_ACCESSORS(WasmInstanceObject, wasm_external_functions, FixedArray,
                    kWasmExternalFunctionsOffset)
 ACCESSORS(WasmInstanceObject, managed_object_maps, FixedArray,
           kManagedObjectMapsOffset)
+ACCESSORS(WasmInstanceObject, feedback_vectors, FixedArray,
+          kFeedbackVectorsOffset)
 
 void WasmInstanceObject::clear_padding() {
   if (FIELD_SIZE(kOptionalPaddingOffset) != 0) {
@@ -632,6 +637,22 @@ int WasmArray::SizeFor(Map map, int length) {
   return kHeaderSize + RoundUp(element_size * length, kTaggedSize);
 }
 
+uint32_t WasmArray::element_offset(uint32_t index) {
+  DCHECK_LE(index, length());
+  return WasmArray::kHeaderSize +
+         index * type()->element_type().element_size_bytes();
+}
+
+Address WasmArray::ElementAddress(uint32_t index) {
+  return ptr() + element_offset(index) - kHeapObjectTag;
+}
+
+ObjectSlot WasmArray::ElementSlot(uint32_t index) {
+  DCHECK_LE(index, length());
+  DCHECK(type()->element_type().is_reference());
+  return RawField(kHeaderSize + kTaggedSize * index);
+}
+
 // static
 Handle<Object> WasmArray::GetElement(Isolate* isolate, Handle<WasmArray> array,
                                      uint32_t index) {
@@ -639,9 +660,8 @@ Handle<Object> WasmArray::GetElement(Isolate* isolate, Handle<WasmArray> array,
     return isolate->factory()->undefined_value();
   }
   wasm::ValueType element_type = array->type()->element_type();
-  uint32_t offset =
-      WasmArray::kHeaderSize + index * element_type.element_size_bytes();
-  return ReadValueAt(isolate, array, element_type, offset);
+  return ReadValueAt(isolate, array, element_type,
+                     array->element_offset(index));
 }
 
 // static
